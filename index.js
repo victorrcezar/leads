@@ -1,7 +1,5 @@
 import fetch from "node-fetch";
 
-const APPS_SCRIPT_URL = process.env.APPS_SCRIPT_URL;
-
 export default async function handler(req, res) {
   // CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -12,20 +10,26 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
+  const APPS_SCRIPT_URL = process.env.APPS_SCRIPT_URL;
+
   if (!APPS_SCRIPT_URL) {
-    return res.status(500).json({ success: false, error: "APPS_SCRIPT_URL não configurado." });
+    return res.status(500).json({
+      success: false,
+      error: "APPS_SCRIPT_URL não configurado."
+    });
   }
 
   try {
-    // GET (passa query params corretamente)
+    // GET → repassa corretamente os parâmetros
     if (req.method === "GET") {
-      const url = `${APPS_SCRIPT_URL}?${new URLSearchParams(req.query).toString()}`;
-      const r = await fetch(url);
-      const text = await r.text();
+      const qs = new URLSearchParams(req.query).toString();
+      const url = `${APPS_SCRIPT_URL}?${qs}`;
+
+      const response = await fetch(url);
+      const text = await response.text();
 
       try {
-        const data = JSON.parse(text);
-        return res.status(200).json(data);
+        return res.status(200).json(JSON.parse(text));
       } catch (err) {
         return res.status(500).json({
           success: false,
@@ -35,31 +39,4 @@ export default async function handler(req, res) {
       }
     }
 
-    // POST
-    if (req.method === "POST") {
-      const r = await fetch(APPS_SCRIPT_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(req.body)
-      });
-
-      const text = await r.text();
-
-      try {
-        const data = JSON.parse(text);
-        return res.status(200).json(data);
-      } catch {
-        return res.status(500).json({
-          success: false,
-          error: "Resposta do Apps Script não é JSON",
-          raw: text
-        });
-      }
-    }
-
-    return res.status(405).json({ success: false, error: "Método não permitido" });
-
-  } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
-  }
-}
+    // POST → rep
