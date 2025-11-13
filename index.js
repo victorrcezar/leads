@@ -1,15 +1,9 @@
 import fetch from "node-fetch";
 
-/**
- * UP! PROXY — repassa requisições para o Apps Script e adiciona CORS.
- *
- * O endereço do Apps Script deve ficar em uma variável de ambiente APPS_SCRIPT_URL.
- */
-
 const APPS_SCRIPT_URL = process.env.APPS_SCRIPT_URL;
 
 export default async function handler(req, res) {
-  // CORS FULL
+  // CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -23,24 +17,44 @@ export default async function handler(req, res) {
   }
 
   try {
-    // GET -> repassa query string para o Apps Script
+    // GET (passa query params corretamente)
     if (req.method === "GET") {
-      const queryString = new URLSearchParams(req.query).toString();
-      const url = queryString ? `${APPS_SCRIPT_URL}?${queryString}` : APPS_SCRIPT_URL;
+      const url = `${APPS_SCRIPT_URL}?${new URLSearchParams(req.query).toString()}`;
       const r = await fetch(url);
-      const data = await r.json();
-      return res.status(200).json(data);
+      const text = await r.text();
+
+      try {
+        const data = JSON.parse(text);
+        return res.status(200).json(data);
+      } catch (err) {
+        return res.status(500).json({
+          success: false,
+          error: "Resposta do Apps Script não é JSON",
+          raw: text
+        });
+      }
     }
 
-    // POST -> repassa body para o Apps Script
+    // POST
     if (req.method === "POST") {
       const r = await fetch(APPS_SCRIPT_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(req.body)
       });
-      const data = await r.json();
-      return res.status(200).json(data);
+
+      const text = await r.text();
+
+      try {
+        const data = JSON.parse(text);
+        return res.status(200).json(data);
+      } catch {
+        return res.status(500).json({
+          success: false,
+          error: "Resposta do Apps Script não é JSON",
+          raw: text
+        });
+      }
     }
 
     return res.status(405).json({ success: false, error: "Método não permitido" });
